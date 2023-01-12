@@ -9,9 +9,9 @@ using Pulumi.Azure.Network.Inputs;
 return await Deployment.RunAsync(() =>
 {
     // Create a resource group.
-    var resourceGroup = new ResourceGroup("lipton-brokebonds", new ResourceGroupArgs
+    var resourceGroup = new ResourceGroup("lipton-brokebonds-resource-group", new ResourceGroupArgs
     {
-        Name = "lipton-brokebonds",
+        Name = "lipton-brokebonds-resource-group",
         Location = "westeurope"
     });
     // Create a virtual network.
@@ -29,43 +29,24 @@ return await Deployment.RunAsync(() =>
         AddressPrefixes = new[]
         {
             "10.0.2.0/24"
-        }
-    });
-    // Create a container group.
-    var containerGroup = new Group("lipton-brokebonds-container-group", new GroupArgs
-    {
-        ResourceGroupName = resourceGroup.Name,
-        Location = resourceGroup.Location,
-        OsType = "Linux",
-        IpAddressType = "Private",
-        SubnetIds = subnet.Id,
-        Containers = new[]
+        },
+        Delegations = new[]
         {
-            new GroupContainerArgs
+            new SubnetDelegationArgs
             {
-                Name = "lipton-brokebonds-container",
-                Image = "docker.cloudsmith.io/element-data/own_pacages/sampledockerwebapplication:latest",
-                Cpu = 0.5,
-                Memory = 0.5,
-                Ports = new[]
+                Name = "delegation",
+                ServiceDelegation = new SubnetDelegationServiceDelegationArgs
                 {
-                    new GroupContainerPortArgs
+                    Name = "Microsoft.ContainerInstance/containerGroups",
+                    Actions = new[]
                     {
-                        Port = 80
+                        "Microsoft.Network/virtualNetworks/subnets/action"
                     }
                 }
             }
-        },
-        ImageRegistryCredentials = new[]
-        {
-            new GroupImageRegistryCredentialArgs
-            {
-                Server = "docker.cloudsmith.io",
-                Username = "element-data/own_pacages",
-                Password = "bY3ZyXppYmzUQ3Hp"
-            }
         }
     });
+
     // Create a network security group and a rule to allow traffic from a specific IP.
     var networkSecurityGroup = new NetworkSecurityGroup("lipton-brokebonds-nsg", new NetworkSecurityGroupArgs
     {
@@ -109,6 +90,60 @@ return await Deployment.RunAsync(() =>
             NetworkInterfaceId = networkInterface.Id,
             NetworkSecurityGroupId = networkSecurityGroup.Id
         });
+
+    // var networkProfileName = "lipton-brokebonds-networkprofile";
+    // var profile = new Profile(networkProfileName, new ProfileArgs
+    // {
+    //     ResourceGroupName = resourceGroup.Name,
+    //     Location = resourceGroup.Location,
+    //     Name = networkProfileName,
+    //     ContainerNetworkInterface = new ProfileContainerNetworkInterfaceArgs
+    //     {
+    //         Name = "container-network-interface",
+    //         IpConfigurations = new[]
+    //         {
+    //             new ProfileContainerNetworkInterfaceIpConfigurationArgs { Name = "subnet", SubnetId = subnet.Id }
+    //         }
+    //     }
+    // });
+
+    // Create a container group.
+    var containerGroup = new Group("lipton-brokebonds-container-group", new GroupArgs
+    {
+        ResourceGroupName = resourceGroup.Name,
+        Location = resourceGroup.Location,
+        OsType = "Linux",
+        IpAddressType = "Private",
+        SubnetIds = subnet.Id,
+        //NetworkProfileId = profile.Id,
+        Containers = new[]
+        {
+            new GroupContainerArgs
+            {
+                Name = "lipton-brokebonds-container",
+                Image = "docker.cloudsmith.io/element-data/own_pacages/sampledockerwebapplication:latest",
+                Cpu = 0.5,
+                Memory = 0.5,
+                Ports = new[]
+                {
+                    new GroupContainerPortArgs
+                    {
+                        Port = 80
+                    }
+                }
+            }
+        },
+        ImageRegistryCredentials = new[]
+        {
+            new GroupImageRegistryCredentialArgs
+            {
+                Server = "docker.cloudsmith.io",
+                Username = "element-data/own_pacages",
+                Password = "bY3ZyXppYmzUQ3Hp"
+            }
+        }
+    });
+
     // Export the primary key of the Storage Account
     return new Dictionary<string, object?>
     {
