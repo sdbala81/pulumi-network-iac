@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Pulumi;
 using Pulumi.Azure.ContainerService;
 using Pulumi.Azure.ContainerService.Inputs;
